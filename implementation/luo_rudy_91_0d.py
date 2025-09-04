@@ -76,7 +76,7 @@ class LuoRudy910D:
         # Time-dependent potassium current:
         self.variables["x"] += self.dt*ops.calc_dx(self.variables["u"], self.variables["x"])
 
-        ik = ops.calc_ik(self.variables["u"], self.dt, self.variables["x"], self.parameters["ko"], self.parameters["ki"], 
+        ik = ops.calc_ik(self.variables["u"], self.variables["x"], self.parameters["ko"], self.parameters["ki"], 
                          self.parameters["nao"], self.parameters["nai"], self.parameters["PR_NaK"], 
                          self.parameters["R"], self.parameters["T"], self.parameters["F"], self.parameters["gk"])
 
@@ -92,13 +92,12 @@ class LuoRudy910D:
         ib = ops.calc_ib(self.variables["u"], self.parameters["gb"])
 
         # Total time-independent potassium current:
-        self.variables["u"] += self.dt*(ops.calc_rhs(self.variables["u"], 
-                                                  ina, 
-                                                  isi, 
-                                                  ik, 
-                                                  ik1, 
-                                                  ikp, 
-                                                  ib)
+        self.variables["u"] += self.dt*(ops.calc_rhs(ina, 
+                                                     isi, 
+                                                     ik, 
+                                                     ik1, 
+                                                     ikp, 
+                                                     ib)
                                         + sum(stim.stim(t=self.dt*i) for stim in self.stimulations))
 
     def run(self, t_max: float):
