@@ -5,7 +5,6 @@ build-backend = "hatchling.build"
 [project]
 name = "Luo-Rudy-91 model"
 version = "0.1.0"
-# Replace with the model's description.
 description = "Readable cardiac model."
 readme = "README.md"
 requires-python = ">=3.10"
