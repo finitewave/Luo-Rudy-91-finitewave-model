@@ -43,40 +43,40 @@ python -m pytest -q
 
 ### Variables
 Model state variables: description, units and ranges (optional)
-`u`   - Transmembrane potential (mV)
-`m`   - Activation variable for sodium channels
-`h`   - Inactivation variable for sodium channels
-`j`   - Inactivation variable for sodium channels
-`d`   - Activation variable for calcium channels
-`f`   - Inactivation variable for calcium channels
-`x`   - Activation variable for potassium channels
-`cai` - Intracellular calcium concentration (mM)
+- `u`   - Transmembrane potential (mV)
+- `m`   - Activation variable for sodium channels
+- `h`   - Inactivation variable for sodium channels
+- `j`   - Inactivation variable for sodium channels
+- `d`   - Activation variable for calcium channels
+- `f`   - Inactivation variable for calcium channels
+- `x`   - Activation variable for potassium channels
+- `cai` - Intracellular calcium concentration (mM)
 
 ### Parameters
 Ion Channel Conductances (mS/µF)
-`gna = 23.0`    - Fast sodium (Na+) conductance
-`gsi = 0.09`    - Slow inward calcium (Ca2+) conductance
-`gk  = 0.282`   - Time-dependent potassium (K+) conductance
-`gk1 = 0.6047`  - Inward rectifier potassium (K1) conductance
-`gkp = 0.0183`  - Plateau potassium (Kp) conductance
-`gb  = 0.03921` - Background conductance (leak current)
+- `gna = 23.0`    - Fast sodium (Na+) conductance
+- `gsi = 0.09`    - Slow inward calcium (Ca2+) conductance
+- `gk  = 0.282`   - Time-dependent potassium (K+) conductance
+- `gk1 = 0.6047`  - Inward rectifier potassium (K1) conductance
+- `gkp = 0.0183`  - Plateau potassium (Kp) conductance
+- `gb  = 0.03921` - Background conductance (leak current)
 
 Extracellular and Intracellular Ion Concentrations (mM)
-`ko  = 5.4`   - Extracellular potassium concentration
-`ki  = 145.0` - Intracellular potassium concentration
-`nai = 18.0`  - Intracellular sodium concentration
-`nao = 140.0` - Extracellular sodium concentration
-`cao = 1.8`   - Extracellular calcium concentration
+- `ko  = 5.4`   - Extracellular potassium concentration
+- `ki  = 145.0` - Intracellular potassium concentration
+- `nai = 18.0`  - Intracellular sodium concentration
+- `nao = 140.0` - Extracellular sodium concentration
+- `cao = 1.8`   - Extracellular calcium concentration
 
 Physical Constants
-`R = 8.314` - Universal gas constant (J/(mol·K))
-`T = 310.0` - Temperature (Kelvin, 37°C)
-`F = 96.5`  - Faraday constant (C/mmol)
+- `R = 8.314` - Universal gas constant (J/(mol·K))
+- `T = 310.0` - Temperature (Kelvin, 37°C)
+- `F = 96.5`  - Faraday constant (C/mmol)
 
 Ion Permeability Ratios
-`PR_NaK = 0.01833` - Na+/K+ permeability ratio
+- `PR_NaK = 0.01833` - Na+/K+ permeability ratio
 
 Equilibrium potentials (mV)
-`E_Na = (R * T / F) * log(nao / nai)`
-`E_K1 = (R * T / F) * log(ko / ki)` 
+- `E_Na = (R * T / F) * log(nao / nai)`
+- `E_K1 = (R * T / F) * log(ko / ki)` 
 
