@@ -3,8 +3,8 @@ requires = ["hatchling>=1.21.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "Luo-Rudy-91-model_template"
-version = "0.1.0"
+name = "finitewave-model-luo-rudy-91"
+version = "0.2.0"
 description = "Luo-Rudy-91 model."
 readme = "README.md"
 requires-python = ">=3.10"
