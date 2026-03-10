@@ -56,49 +56,100 @@ class LuoRudy910D:
         i : int
             Current time step index.
         """
-        # Fast sodium current:
-        self.variables["m"] += self.dt*ops.calc_dm(self.variables["u"], self.variables["m"])
-        self.variables["h"] += self.dt*ops.calc_dh(self.variables["u"], self.variables["h"])
-        self.variables["j"] += self.dt*ops.calc_dj(self.variables["u"], self.variables["j"])
+        u_old = self.variables["u"]
+        m_old = self.variables["m"]
+        h_old = self.variables["h"]
+        j_old = self.variables["j"]
+        d_old = self.variables["d"]
+        f_old = self.variables["f"]
+        x_old = self.variables["x"]
+        cai_old = self.variables["cai"]
 
-        ina = ops.calc_ina(self.variables["u"], self.variables["m"], self.variables["h"], self.variables["j"], self.parameters["E_Na"], 
-                           self.parameters["gna"])
+        # Gating derivatives from old state
+        dm = ops.calc_dm(u_old, m_old)
+        dh = ops.calc_dh(u_old, h_old)
+        dj = ops.calc_dj(u_old, j_old)
 
-        # Slow inward current:
-        self.variables["d"] += self.dt*ops.calc_dd(self.variables["u"], self.variables["d"])
-        self.variables["f"] += self.dt*ops.calc_df(self.variables["u"], self.variables["f"])
-        
-        isi = ops.calc_isk(self.variables["u"], self.variables["d"], self.variables["f"], self.variables["cai"], 
-                           self.parameters["gsi"])
+        dd = ops.calc_dd(u_old, d_old)
+        df = ops.calc_df(u_old, f_old)
 
-        self.variables["cai"] += self.dt*ops.calc_dcai(self.variables["cai"], isi)
+        dx = ops.calc_dx(u_old, x_old)
 
-        # Time-dependent potassium current:
-        self.variables["x"] += self.dt*ops.calc_dx(self.variables["u"], self.variables["x"])
+        # Currents from old state
+        ina = ops.calc_ina(
+            u_old,
+            m_old,
+            h_old,
+            j_old,
+            self.parameters["E_Na"],
+            self.parameters["gna"],
+        )
 
-        ik = ops.calc_ik(self.variables["u"], self.variables["x"], self.parameters["ko"], self.parameters["ki"], 
-                         self.parameters["nao"], self.parameters["nai"], self.parameters["PR_NaK"], 
-                         self.parameters["R"], self.parameters["T"], self.parameters["F"], self.parameters["gk"])
+        isi = ops.calc_isk(
+            u_old,
+            d_old,
+            f_old,
+            cai_old,
+            self.parameters["gsi"],
+        )
 
+        ik = ops.calc_ik(
+            u_old,
+            x_old,
+            self.parameters["ko"],
+            self.parameters["ki"],
+            self.parameters["nao"],
+            self.parameters["nai"],
+            self.parameters["PR_NaK"],
+            self.parameters["R"],
+            self.parameters["T"],
+            self.parameters["F"],
+            self.parameters["gk"],
+        )
 
+        ik1 = ops.calc_ik1(
+            u_old,
+            self.parameters["ko"],
+            self.parameters["E_K1"],
+            self.parameters["gk1"],
+        )
 
-        # Time-independent potassium current:
-        ik1 = ops.calc_ik1(self.variables["u"], self.parameters["ko"], self.parameters["E_K1"], self.parameters["gk1"])
+        ikp = ops.calc_ikp(
+            u_old,
+            self.parameters["E_K1"],
+            self.parameters["gkp"],
+        )
 
-        # Plateau potassium current:
-        ikp = ops.calc_ikp(self.variables["u"], self.parameters["E_K1"], self.parameters["gkp"])
+        ib = ops.calc_ib(
+            u_old,
+            self.parameters["gb"],
+        )
 
-        # Background current:
-        ib = ops.calc_ib(self.variables["u"], self.parameters["gb"])
+        dcai = ops.calc_dcai(cai_old, isi)
 
-        # Total time-independent potassium current:
-        self.variables["u"] += self.dt*(ops.calc_rhs(ina, 
-                                                     isi, 
-                                                     ik, 
-                                                     ik1, 
-                                                     ikp, 
-                                                     ib)
-                                        + sum(stim.stim(t=self.dt*i) for stim in self.stimulations))
+        stim_current = sum(stim.stim(t=self.dt * i) for stim in self.stimulations)
+
+        du = ops.calc_rhs(
+            ina,
+            isi,
+            ik,
+            ik1,
+            ikp,
+            ib,
+        ) + stim_current
+
+        # Explicit update
+        self.variables["m"] = m_old + self.dt * dm
+        self.variables["h"] = h_old + self.dt * dh
+        self.variables["j"] = j_old + self.dt * dj
+
+        self.variables["d"] = d_old + self.dt * dd
+        self.variables["f"] = f_old + self.dt * df
+
+        self.variables["x"] = x_old + self.dt * dx
+        self.variables["cai"] = cai_old + self.dt * dcai
+
+        self.variables["u"] = u_old + self.dt * du
 
     def run(self, t_max: float):
         """
