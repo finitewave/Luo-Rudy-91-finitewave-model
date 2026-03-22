@@ -126,6 +126,12 @@ def calc_rhs(ina, isi, ik, ik1, ikp, ib):
     return -(ina + isi + ik1t + ik)
     
 
+def calc_where(cond, x, y):
+    if cond:
+        return x
+    return y
+
+
 def calc_dm(u, m, exp=math.exp):
     """
     Computes the gating variable m for the fast sodium current (I_Na).
@@ -155,7 +161,7 @@ def calc_dm(u, m, exp=math.exp):
     return (inf_m - m) / tau_m
 
 
-def calc_dh(u, h, exp=math.exp):
+def calc_dh(u, h, exp=math.exp, where=calc_where):
     """
     Computes the gating variable h for the fast sodium current (I_Na).
     Gating variable h follows Hodgkin-Huxley kinetics with voltage-dependent
@@ -175,12 +181,9 @@ def calc_dh(u, h, exp=math.exp):
     dh_dt : float
         Time derivative of the gating variable h.
     """
-    alpha_h, beta_h = 0, 0
-    if u >= -40.:
-        beta_h = 1. / (0.13 * (1 + exp((u + 10.66) / -11.1)))
-    else:
-        alpha_h = 0.135 * exp((80 + u) / -6.8)
-        beta_h = 3.56 * exp(0.079 * u) + 3.1 * 1e5 * exp(0.35 * u)
+    alpha_h = where(u >= -40., 0, 0.135 * exp((80 + u) / -6.8))
+    beta_h = where(u >= -40., 1. / (0.13 * (1 + exp((u + 10.66) / -11.1))),
+                    3.56 * exp(0.079 * u) + 3.1 * 1e5 * exp(0.35 * u))
 
     tau_h = 1. / (alpha_h + beta_h)
     inf_h = alpha_h / (alpha_h + beta_h)
@@ -188,7 +191,7 @@ def calc_dh(u, h, exp=math.exp):
     return (inf_h - h) / tau_h
 
 
-def calc_dj(u, j, exp=math.exp):
+def calc_dj(u, j, exp=math.exp, where=calc_where):
     """
     Computes the gating variable j for the fast sodium current (I_Na).
     Gating variable j follows Hodgkin-Huxley kinetics with voltage-dependent
@@ -208,14 +211,10 @@ def calc_dj(u, j, exp=math.exp):
     dj_dt : float
         Time derivative of the gating variable j.
     """
-
-    alpha_j, beta_j = 0, 0
-    if u >= -40.:
-        beta_j = 0.3 * exp(-2.535 * 1e-07 * u) / (1 + exp(-0.1 * (u + 32)))
-    else:
-        beta_j = 0.1212 * exp(-0.01052 * u) / (1 + exp(-0.1378 * (u + 40.14)))
-        alpha_j = (-1.2714 * 1e5 * exp(0.2444 * u) - 3.474 * 1e-5 * exp(-0.04391 * u)) * \
-                    (u + 37.78) / (1 + exp(0.311 * (u + 79.23)))
+    alpha_j = where(u >= -40., 0, (-127140 * exp(0.2444 * u) - 3.474e-5 * exp(-0.04391 * u)) * \
+                    (u + 37.78) / (1 + exp(0.311 * (u + 79.23))))
+    beta_j = where(u >= -40., 0.3 * exp(-2.535e-7 * u) / (1 + exp(-0.1 * (u + 32))),
+                    0.1212 * exp(-0.01052 * u) / (1 + exp(-0.1378 * (u + 40.14))))
 
     tau_j = 1. / (alpha_j + beta_j)
     inf_j = alpha_j / (alpha_j + beta_j)
@@ -398,7 +397,7 @@ def calc_isk(u, d, f, cai, gsi, log=math.log):
     return gsi * d * f * (u - E_Si)
 
 
-def calc_ik(u, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk, sqrt=math.sqrt, exp=math.exp, log=math.log):
+def calc_ik(u, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk, sqrt=math.sqrt, exp=math.exp, log=math.log, where=calc_where):
     """
     Computes the time-dependent outward potassium current (I_K).
 
@@ -437,12 +436,8 @@ def calc_ik(u, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk, sqrt=math.sqrt, exp=mat
 
     G_K = gk * sqrt(ko / 5.4)
 
-    Xi = 0
-    if u > -100:
-        Xi = 2.837 * (exp(0.04 * (u + 77)) - 1) / \
-            ((u + 77) * exp(0.04 * (u + 35)))
-    else:
-        Xi = 1
+    Xi = where(u > -100, 2.837 * (exp(0.04 * (u + 77)) - 1) / \
+        ((u + 77) * exp(0.04 * (u + 35))), 1)
 
     return G_K * x * Xi * (u - E_K)
 
