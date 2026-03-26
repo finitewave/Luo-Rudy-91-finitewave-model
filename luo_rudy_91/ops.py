@@ -19,6 +19,7 @@ __all__ = (
     "get_variables",
     "get_parameters",
     "calc_rhs",
+    "calc_where",
     "calc_dm",
     "calc_dh",
     "calc_dj",
@@ -34,7 +35,7 @@ __all__ = (
     "calc_ib"  
 )
 
-import math
+from math import log, exp, sqrt
 
 
 def get_variables() -> dict[str, float]:
@@ -132,7 +133,7 @@ def calc_where(cond, x, y):
     return y
 
 
-def calc_dm(u, m, exp=math.exp):
+def calc_dm(u, m):
     """
     Computes the gating variable m for the fast sodium current (I_Na).
     Gating variable m follows Hodgkin-Huxley kinetics with voltage-dependent
@@ -144,8 +145,6 @@ def calc_dm(u, m, exp=math.exp):
         Membrane potential [mV].
     m : float
         Current value of the gating variable m.
-    exp : callable, optional
-        Exponential function to use (default: math.exp).
 
     Returns
     -------
@@ -161,7 +160,7 @@ def calc_dm(u, m, exp=math.exp):
     return (inf_m - m) / tau_m
 
 
-def calc_dh(u, h, exp=math.exp, where=calc_where):
+def calc_dh(u, h):
     """
     Computes the gating variable h for the fast sodium current (I_Na).
     Gating variable h follows Hodgkin-Huxley kinetics with voltage-dependent
@@ -173,16 +172,14 @@ def calc_dh(u, h, exp=math.exp, where=calc_where):
         Membrane potential [mV].
     h : float
         Current value of the gating variable h.
-    exp : callable, optional
-        Exponential function to use (default: math.exp).
 
     Returns
     -------
     dh_dt : float
         Time derivative of the gating variable h.
     """
-    alpha_h = where(u >= -40., 0, 0.135 * exp((80 + u) / -6.8))
-    beta_h = where(u >= -40., 1. / (0.13 * (1 + exp((u + 10.66) / -11.1))),
+    alpha_h = calc_where(u >= -40., 0, 0.135 * exp((80 + u) / -6.8))
+    beta_h = calc_where(u >= -40., 1. / (0.13 * (1 + exp((u + 10.66) / -11.1))),
                     3.56 * exp(0.079 * u) + 3.1 * 1e5 * exp(0.35 * u))
 
     tau_h = 1. / (alpha_h + beta_h)
@@ -191,7 +188,7 @@ def calc_dh(u, h, exp=math.exp, where=calc_where):
     return (inf_h - h) / tau_h
 
 
-def calc_dj(u, j, exp=math.exp, where=calc_where):
+def calc_dj(u, j):
     """
     Computes the gating variable j for the fast sodium current (I_Na).
     Gating variable j follows Hodgkin-Huxley kinetics with voltage-dependent
@@ -203,17 +200,15 @@ def calc_dj(u, j, exp=math.exp, where=calc_where):
         Membrane potential [mV].
     j : float
         Current value of the gating variable j.
-    exp : callable, optional
-        Exponential function to use (default: math.exp).
 
     Returns
     -------
     dj_dt : float
         Time derivative of the gating variable j.
     """
-    alpha_j = where(u >= -40., 0, (-127140 * exp(0.2444 * u) - 3.474e-5 * exp(-0.04391 * u)) * \
+    alpha_j = calc_where(u >= -40., 0, (-127140 * exp(0.2444 * u) - 3.474e-5 * exp(-0.04391 * u)) * \
                     (u + 37.78) / (1 + exp(0.311 * (u + 79.23))))
-    beta_j = where(u >= -40., 0.3 * exp(-2.535e-7 * u) / (1 + exp(-0.1 * (u + 32))),
+    beta_j = calc_where(u >= -40., 0.3 * exp(-2.535e-7 * u) / (1 + exp(-0.1 * (u + 32))),
                     0.1212 * exp(-0.01052 * u) / (1 + exp(-0.1378 * (u + 40.14))))
 
     tau_j = 1. / (alpha_j + beta_j)
@@ -222,7 +217,7 @@ def calc_dj(u, j, exp=math.exp, where=calc_where):
     return (inf_j - j) / tau_j
 
 
-def calc_dd(u, d, exp=math.exp):
+def calc_dd(u, d):
     """
     Computes the gating variable d for the slow inward calcium current (I_Si).
     Gating variable d follows Hodgkin-Huxley kinetics with voltage-dependent
@@ -234,8 +229,6 @@ def calc_dd(u, d, exp=math.exp):
         Membrane potential [mV].
     d : float
         Current value of the gating variable d.
-    exp : callable, optional
-        Exponential function to use (default: math.exp).
 
     Returns
     -------
@@ -251,7 +244,7 @@ def calc_dd(u, d, exp=math.exp):
     return (inf_d - d) / tau_d
 
 
-def calc_df(u, f, exp=math.exp):
+def calc_df(u, f):
     """
     Computes the gating variable f for the slow inward calcium current (I_Si).
     Gating variable f follows Hodgkin-Huxley kinetics with voltage-dependent
@@ -263,8 +256,6 @@ def calc_df(u, f, exp=math.exp):
         Membrane potential [mV].
     f : float
         Current value of the gating variable f.
-    exp : callable, optional
-        Exponential function to use (default: math.exp).
 
     Returns
     -------
@@ -279,7 +270,7 @@ def calc_df(u, f, exp=math.exp):
 
     return (inf_f - f) / tau_f
 
-def calc_dx(u, x, exp=math.exp):
+def calc_dx(u, x):
     """
     Computes the gating variable x for the time-dependent potassium current (I_K).
     Gating variable x follows Hodgkin-Huxley kinetics with voltage-dependent
@@ -291,8 +282,6 @@ def calc_dx(u, x, exp=math.exp):
         Membrane potential [mV].
     x : float
         Current value of the gating variable x.
-    exp : callable, optional
-        Exponential function to use (default: math.exp).
 
     Returns
     -------
@@ -364,7 +353,7 @@ def calc_ina(u, m, h, j, E_Na, gna):
     return gna * m * m * m * h * j * (u - E_Na)
 
 
-def calc_isk(u, d, f, cai, gsi, log=math.log):
+def calc_isk(u, d, f, cai, gsi):
     """
     Computes the slow inward calcium current (I_Si).
 
@@ -384,8 +373,6 @@ def calc_isk(u, d, f, cai, gsi, log=math.log):
         Intracellular calcium concentration [mM].
     gsi : float
         Maximal calcium conductance [mS/μF].
-    log : callable, optional
-        Logarithm function to use (default: math.log).
 
     Returns
     -------
@@ -397,7 +384,7 @@ def calc_isk(u, d, f, cai, gsi, log=math.log):
     return gsi * d * f * (u - E_Si)
 
 
-def calc_ik(u, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk, sqrt=math.sqrt, exp=math.exp, log=math.log, where=calc_where):
+def calc_ik(u, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk):
     """
     Computes the time-dependent outward potassium current (I_K).
 
@@ -423,8 +410,6 @@ def calc_ik(u, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk, sqrt=math.sqrt, exp=mat
         Gas constant, temperature [K], and Faraday constant.
     gk : float
         Maximum potassium conductance [mS/μF].
-    sqrt, exp, log : callable, optional
-        Mathematical functions to use (default: math.sqrt, math.exp, math.log).
 
     Returns
     -------
@@ -436,13 +421,13 @@ def calc_ik(u, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk, sqrt=math.sqrt, exp=mat
 
     G_K = gk * sqrt(ko / 5.4)
 
-    Xi = where(u > -100, 2.837 * (exp(0.04 * (u + 77)) - 1) / \
+    Xi = calc_where(u > -100, 2.837 * (exp(0.04 * (u + 77)) - 1) / \
         ((u + 77) * exp(0.04 * (u + 35))), 1)
 
     return G_K * x * Xi * (u - E_K)
 
 
-def calc_ik1(u, ko, E_K1, gk1, exp=math.exp, sqrt=math.sqrt):
+def calc_ik1(u, ko, E_K1, gk1):
     """
     Computes the time-independent inward rectifier potassium current (I_K1).
 
@@ -460,8 +445,6 @@ def calc_ik1(u, ko, E_K1, gk1, exp=math.exp, sqrt=math.sqrt):
         Equilibrium potential for K1 current [mV].
     gk1 : float
         Maximum K1 conductance [mS/μF].
-    exp, sqrt : callable, optional
-        Mathematical functions to use (default: math.exp, math.sqrt).
 
     Returns
     -------
@@ -479,7 +462,7 @@ def calc_ik1(u, ko, E_K1, gk1, exp=math.exp, sqrt=math.sqrt):
     return G_K1 * K_1x * (u - E_K1)
 
 
-def calc_ikp(u, E_K1, gkp, exp=math.exp):
+def calc_ikp(u, E_K1, gkp):
     """
     Computes the plateau potassium current (I_Kp).
 
@@ -496,8 +479,6 @@ def calc_ikp(u, E_K1, gkp, exp=math.exp):
         Equilibrium potential (same as I_K1).
     gkp : float
         Plateau potassium conductance [mS/μF].
-    exp : callable, optional
-        Exponential function to use (default: math.exp).
 
     Returns
     -------
