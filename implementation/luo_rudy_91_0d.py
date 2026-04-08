@@ -46,6 +46,7 @@ class LuoRudy910D:
         self.variables = ops.get_variables()
         self.parameters = ops.get_parameters()
         self.history = {s: [] for s in self.variables}
+        self.stim_curr_history = []
 
     def step(self, i: int):
         """
@@ -65,91 +66,26 @@ class LuoRudy910D:
         x_old = self.variables["x"]
         cai_old = self.variables["cai"]
 
-        # Gating derivatives from old state
-        dm = ops.calc_dm(u_old, m_old)
-        dh = ops.calc_dh(u_old, h_old)
-        dj = ops.calc_dj(u_old, j_old)
-
-        dd = ops.calc_dd(u_old, d_old)
-        df = ops.calc_df(u_old, f_old)
-
-        dx = ops.calc_dx(u_old, x_old)
-
-        # Currents from old state
-        ina = ops.calc_ina(
-            u_old,
-            m_old,
-            h_old,
-            j_old,
-            self.parameters["E_Na"],
-            self.parameters["gna"],
+        rhs, m_new, h_new, j_new, d_new, f_new, x_new, cai_new = ops.ionic_step(
+            self.dt, u_old, m_old, h_old, j_old, d_old, f_old, x_old, cai_old,
+            self.parameters["gna"], self.parameters["gsi"], self.parameters["gk"],
+            self.parameters["gk1"], self.parameters["gkp"], self.parameters["gb"],
+            self.parameters["ko"], self.parameters["ki"], self.parameters["nao"],
+            self.parameters["nai"], self.parameters["R"], self.parameters["T"],
+            self.parameters["F"], self.parameters["PR_NaK"],
+            self.parameters["E_Na"], self.parameters["E_K1"]
         )
+        stim_curr = self.dt * sum(stim.stim(t=self.dt*i) for stim in self.stimulations)
+        self.stim_curr_history.append(stim_curr)
 
-        isi = ops.calc_isk(
-            u_old,
-            d_old,
-            f_old,
-            cai_old,
-            self.parameters["gsi"],
-        )
-
-        ik = ops.calc_ik(
-            u_old,
-            x_old,
-            self.parameters["ko"],
-            self.parameters["ki"],
-            self.parameters["nao"],
-            self.parameters["nai"],
-            self.parameters["PR_NaK"],
-            self.parameters["R"],
-            self.parameters["T"],
-            self.parameters["F"],
-            self.parameters["gk"],
-        )
-
-        ik1 = ops.calc_ik1(
-            u_old,
-            self.parameters["ko"],
-            self.parameters["E_K1"],
-            self.parameters["gk1"],
-        )
-
-        ikp = ops.calc_ikp(
-            u_old,
-            self.parameters["E_K1"],
-            self.parameters["gkp"],
-        )
-
-        ib = ops.calc_ib(
-            u_old,
-            self.parameters["gb"],
-        )
-
-        dcai = ops.calc_dcai(cai_old, isi)
-
-        stim_current = sum(stim.stim(t=self.dt * i) for stim in self.stimulations)
-
-        du = ops.calc_rhs(
-            ina,
-            isi,
-            ik,
-            ik1,
-            ikp,
-            ib,
-        ) + stim_current
-
-        # Explicit update
-        self.variables["m"] = m_old + self.dt * dm
-        self.variables["h"] = h_old + self.dt * dh
-        self.variables["j"] = j_old + self.dt * dj
-
-        self.variables["d"] = d_old + self.dt * dd
-        self.variables["f"] = f_old + self.dt * df
-
-        self.variables["x"] = x_old + self.dt * dx
-        self.variables["cai"] = cai_old + self.dt * dcai
-
-        self.variables["u"] = u_old + self.dt * du
+        self.variables["u"] += self.dt * rhs + stim_curr        
+        self.variables["m"] = m_new
+        self.variables["h"] = h_new
+        self.variables["j"] = j_new
+        self.variables["d"] = d_new
+        self.variables["f"] = f_new
+        self.variables["x"] = x_new
+        self.variables["cai"] = cai_new
 
     def run(self, t_max: float):
         """

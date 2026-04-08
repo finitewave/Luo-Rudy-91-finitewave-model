@@ -93,6 +93,68 @@ def get_parameters() -> dict[str, float]:
         "E_Na": 54.7857, "E_K1": -87.8789}
 
 
+def ionic_step(dt, u, m, h, j, d, f, x, cai, gna, gsi, gk, gk1, gkp, gb, 
+               ko, ki, nao, nai, R, T, F, PR_NaK, E_Na, E_K1):
+    """
+    Performs a single time step for the Luo-Rudy-91 model.
+
+    TODO: add options for math.log
+
+    Parameters
+    ----------
+    dt : float
+        Time step for integration.
+    u : float
+        Current value of the transmembrane potential.
+    m, h, j : float
+        Gating variables for the sodium channel.
+    d, f : float
+        Gating variables for the calcium channel.
+    x : float
+        Gating variable for the potassium channel.
+    cai : float
+        Intracellular calcium concentration.
+    gna, gsi, gk, gk1, gkp, gb : float
+        Model parameters for ion channel conductances and background conductance.
+    ko, ki, nai, nao : float
+        Extracellular and intracellular ion concentrations.
+    R, T, F : float
+        Physical constants (gas constant, temperature, Faraday constant).
+    PR_NaK : float
+        Na+/K+ permeability ratio.
+    E_Na, E_K1 : float
+        Reversal potentials for sodium and potassium currents.
+
+    Returns
+    -------
+    rhs : float
+        The computed right-hand side of the differential equation for `u`.
+    m_new, h_new, j_new, d_new, f_new, x_new, cai_new : float
+        Updated values of the gating variables and intracellular calcium concentration.
+    """
+
+    E_Na = (R * T / F) * log(nao / nai)
+    E_K1 = (R * T / F) * log(ko / ki)
+
+    ina = calc_ina(u, m, h, j, E_Na, gna)
+    isi = calc_isk(u, d, f, cai, gsi)
+    ik = calc_ik(u, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk)
+    ik1 = calc_ik1(u, ko, E_K1, gk1)
+    ikp = calc_ikp(u, E_K1, gkp)
+    ib = calc_ib(u, gb)
+
+    m_new = m + dt * calc_dm(u, m)
+    h_new = h + dt * calc_dh(u, h)
+    j_new = j + dt * calc_dj(u, j)
+    d_new = d + dt * calc_dd(u, d)
+    f_new = f + dt * calc_df(u, f)
+    x_new = x + dt * calc_dx(u, x)
+    cai_new = cai + dt * calc_dcai(cai, isi)
+
+    rhs = calc_rhs(ina, isi, ik, ik1, ikp, ib)
+    return rhs, m_new, h_new, j_new, d_new, f_new, x_new, cai_new
+
+
 def calc_rhs(ina, isi, ik, ik1, ikp, ib):
     """
     Computes the right-hand side of the Luo-Rudy-91 model for the transmembrane potential u.
