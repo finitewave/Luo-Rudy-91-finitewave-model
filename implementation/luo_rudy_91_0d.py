@@ -46,7 +46,8 @@ class LuoRudy910D:
         self.variables = ops.get_variables()
         self.parameters = ops.get_parameters()
         self.history = {s: [] for s in self.variables}
-        self.stim_curr_history = []
+        self.stim_history = []
+        self.times = []
 
     def step(self, i: int):
         """
@@ -76,9 +77,11 @@ class LuoRudy910D:
             self.parameters["E_Na"], self.parameters["E_K1"]
         )
         stim_curr = self.dt * sum(stim.stim(t=self.dt*i) for stim in self.stimulations)
-        self.stim_curr_history.append(stim_curr)
+        self.stim_history.append(stim_curr)
 
-        self.variables["u"] += self.dt * rhs + stim_curr        
+        u_new = u_old + self.dt * rhs + stim_curr
+
+        self.variables["u"] = u_new
         self.variables["m"] = m_new
         self.variables["h"] = h_new
         self.variables["j"] = j_new
@@ -99,5 +102,6 @@ class LuoRudy910D:
         n_steps = int(round(t_max/self.dt))
         for i in range(n_steps):
             self.step(i)
+            self.times.append(self.dt * i)
             for s in self.variables:
                 self.history[s].append(self.variables[s])

@@ -98,8 +98,6 @@ def ionic_step(dt, u, m, h, j, d, f, x, cai, gna, gsi, gk, gk1, gkp, gb,
     """
     Performs a single time step for the Luo-Rudy-91 model.
 
-    TODO: add options for math.log
-
     Parameters
     ----------
     dt : float
