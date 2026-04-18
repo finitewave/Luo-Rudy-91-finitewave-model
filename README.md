@@ -17,6 +17,8 @@ python -m examples.luo_rudy_91_example
 
 This will initiate a simulation using the Luo-Rudy91 model and display the results.
 
+![Alt text](luo_rudy_91_ap.png)
+
 ### How to test
 ```bash
 python -m pytest -q
