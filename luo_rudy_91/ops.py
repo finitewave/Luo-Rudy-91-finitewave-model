@@ -93,6 +93,66 @@ def get_parameters() -> dict[str, float]:
         "E_Na": 54.7857, "E_K1": -87.8789}
 
 
+def ionic_step(dt, u, m, h, j, d, f, x, cai, gna, gsi, gk, gk1, gkp, gb, 
+               ko, ki, nao, nai, R, T, F, PR_NaK, E_Na, E_K1):
+    """
+    Performs a single time step for the Luo-Rudy-91 model.
+
+    Parameters
+    ----------
+    dt : float
+        Time step for integration.
+    u : float
+        Current value of the transmembrane potential.
+    m, h, j : float
+        Gating variables for the sodium channel.
+    d, f : float
+        Gating variables for the calcium channel.
+    x : float
+        Gating variable for the potassium channel.
+    cai : float
+        Intracellular calcium concentration.
+    gna, gsi, gk, gk1, gkp, gb : float
+        Model parameters for ion channel conductances and background conductance.
+    ko, ki, nai, nao : float
+        Extracellular and intracellular ion concentrations.
+    R, T, F : float
+        Physical constants (gas constant, temperature, Faraday constant).
+    PR_NaK : float
+        Na+/K+ permeability ratio.
+    E_Na, E_K1 : float
+        Reversal potentials for sodium and potassium currents.
+
+    Returns
+    -------
+    rhs : float
+        The computed right-hand side of the differential equation for `u`.
+    m_new, h_new, j_new, d_new, f_new, x_new, cai_new : float
+        Updated values of the gating variables and intracellular calcium concentration.
+    """
+
+    E_Na = (R * T / F) * log(nao / nai)
+    E_K1 = (R * T / F) * log(ko / ki)
+
+    ina = calc_ina(u, m, h, j, E_Na, gna)
+    isi = calc_isk(u, d, f, cai, gsi)
+    ik = calc_ik(u, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk)
+    ik1 = calc_ik1(u, ko, E_K1, gk1)
+    ikp = calc_ikp(u, E_K1, gkp)
+    ib = calc_ib(u, gb)
+
+    m_new = m + dt * calc_dm(u, m)
+    h_new = h + dt * calc_dh(u, h)
+    j_new = j + dt * calc_dj(u, j)
+    d_new = d + dt * calc_dd(u, d)
+    f_new = f + dt * calc_df(u, f)
+    x_new = x + dt * calc_dx(u, x)
+    cai_new = cai + dt * calc_dcai(cai, isi)
+
+    rhs = calc_rhs(ina, isi, ik, ik1, ikp, ib)
+    return rhs, m_new, h_new, j_new, d_new, f_new, x_new, cai_new
+
+
 def calc_rhs(ina, isi, ik, ik1, ikp, ib):
     """
     Computes the right-hand side of the Luo-Rudy-91 model for the transmembrane potential u.
@@ -151,7 +211,10 @@ def calc_dm(u, m):
     dm_dt : float
         Time derivative of the gating variable m.
     """
-    alpha_m = 0.32 * (u + 47.13)/(1 - exp(-0.1 * (u + 47.13)))
+    alpha_m = calc_where(abs(u + 47.13) < 1e-6,
+                         0.32 / 0.1,
+                         0.32 * (u + 47.13)/(1 - exp(-0.1 * (u + 47.13)))
+    )
     beta_m = 0.08 * exp(-u / 11)
 
     tau_m = 1. / (alpha_m + beta_m)
@@ -178,9 +241,11 @@ def calc_dh(u, h):
     dh_dt : float
         Time derivative of the gating variable h.
     """
-    alpha_h = calc_where(u >= -40., 0, 0.135 * exp((80 + u) / -6.8))
-    beta_h = calc_where(u >= -40., 1. / (0.13 * (1 + exp((u + 10.66) / -11.1))),
-                    3.56 * exp(0.079 * u) + 3.1 * 1e5 * exp(0.35 * u))
+    alpha_h = calc_where(u >= -40., 0,
+                         0.135 * exp((80 + u) / -6.8))
+    beta_h = calc_where(u >= -40.,
+                        1. / (0.13 * (1 + exp((u + 10.66) / -11.1))),
+                        3.56 * exp(0.079 * u) + 3.1 * 1e5 * exp(0.35 * u))
 
     tau_h = 1. / (alpha_h + beta_h)
     inf_h = alpha_h / (alpha_h + beta_h)
@@ -206,10 +271,12 @@ def calc_dj(u, j):
     dj_dt : float
         Time derivative of the gating variable j.
     """
-    alpha_j = calc_where(u >= -40., 0, (-127140 * exp(0.2444 * u) - 3.474e-5 * exp(-0.04391 * u)) * \
-                    (u + 37.78) / (1 + exp(0.311 * (u + 79.23))))
-    beta_j = calc_where(u >= -40., 0.3 * exp(-2.535e-7 * u) / (1 + exp(-0.1 * (u + 32))),
-                    0.1212 * exp(-0.01052 * u) / (1 + exp(-0.1378 * (u + 40.14))))
+    alpha_j = calc_where(u >= -40., 0,
+                         ((-127140 * exp(0.2444 * u) - 3.474e-5 * exp(-0.04391 * u)) *
+                          (u + 37.78) / (1 + exp(0.311 * (u + 79.23)))))
+    beta_j = calc_where(u >= -40.,
+                        0.3 * exp(-2.535e-7 * u) / (1 + exp(-0.1 * (u + 32))),
+                        0.1212 * exp(-0.01052 * u) / (1 + exp(-0.1378 * (u + 40.14))))
 
     tau_j = 1. / (alpha_j + beta_j)
     inf_j = alpha_j / (alpha_j + beta_j)
@@ -416,13 +483,15 @@ def calc_ik(u, x, ko, ki, nao, nai, PR_NaK, R, T, F, gk):
     I_K : float
         Time-dependent potassium current [μA/μF].
     """
-    E_K = (R * T / F) * \
-        log((ko + PR_NaK * nao) / (ki + PR_NaK * nai))
+    E_K = (R * T / F) * log((ko + PR_NaK * nao) / (ki + PR_NaK * nai))
 
     G_K = gk * sqrt(ko / 5.4)
 
-    Xi = calc_where(u > -100, 2.837 * (exp(0.04 * (u + 77)) - 1) / \
-        ((u + 77) * exp(0.04 * (u + 35))), 1)
+    Xi = calc_where(abs(u + 77) < 1e-6,
+                    2.837 * 0.04 / exp(0.04 * (u + 35)),
+                    2.837 * (exp(0.04 * (u + 77)) - 1) / ((u + 77) * exp(0.04 * (u + 35))))
+    
+    Xi = calc_where(u > -100, Xi, 1.)
 
     return G_K * x * Xi * (u - E_K)
 
@@ -452,8 +521,8 @@ def calc_ik1(u, ko, E_K1, gk1):
         Time-independent K⁺ current [μA/μF].
     """
     alpha_K1 = 1.02 / (1 + exp(0.2385 * (u - E_K1 - 59.215)))
-    beta_K1 = (0.49124 * exp(0.08032 * (u - E_K1 + 5.476)) + exp(0.06175 * (u - E_K1 - 594.31))) / \
-                (1 + exp(-0.5143 * (u - E_K1 + 4.753)))
+    beta_K1 = ((0.49124 * exp(0.08032 * (u - E_K1 + 5.476)) + exp(0.06175 * (u - E_K1 - 594.31))) / 
+               (1 + exp(-0.5143 * (u - E_K1 + 4.753))))
 
     K_1x = alpha_K1 / (alpha_K1 + beta_K1)
 
