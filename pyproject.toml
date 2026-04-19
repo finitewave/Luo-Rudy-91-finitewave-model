@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "finitewave-model-luo-rudy-91"
-version = "0.5.0"
+version = "0.6.0"
 description = "Luo-Rudy-91 model."
 readme = "README.md"
 requires-python = ">=3.10"
